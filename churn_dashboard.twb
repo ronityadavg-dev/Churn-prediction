@@ -1,0 +1,223 @@
+<?xml version='1.0' encoding='utf-8' ?>
+
+<!-- build 20231.23.0214.0925                               -->
+<workbook original-version='18.1' source-build='2023.1.0' source-platform='win' version='18.1' xmlns:user='http://www.tableausoftware.com/xml/user'>
+  <document-format-change-manifest>
+    <_.fcp.AnimationOnByDefault.true...AnimationOnByDefault />
+    <SheetIdentifierTracking />
+  </document-format-change-manifest>
+  <preferences>
+    <preference name='ui.encoding.shelf.height' value='24' />
+    <preference name='ui.shelf.height' value='26' />
+  </preferences>
+
+  <datasources>
+    <!-- main customer table -->
+    <datasource caption='Telco Customers' inline='true' name='telco' version='18.1'>
+      <connection class='textscan' directory='../data/processed' filename='telco_augmented.csv'>
+        <relation connection='textscan' name='telco_augmented.csv' table='[telco_augmented#csv]' type='table' />
+      </connection>
+      <column datatype='string'  name='[customerID]'       role='dimension' type='nominal' />
+      <column datatype='string'  name='[gender]'           role='dimension' type='nominal' />
+      <column datatype='string'  name='[SeniorCitizen]'    role='dimension' type='nominal' />
+      <column datatype='string'  name='[Partner]'          role='dimension' type='nominal' />
+      <column datatype='string'  name='[Dependents]'       role='dimension' type='nominal' />
+      <column datatype='integer' name='[tenure]'           role='measure'   type='quantitative' />
+      <column datatype='string'  name='[Contract]'         role='dimension' type='nominal' />
+      <column datatype='string'  name='[PaymentMethod]'    role='dimension' type='nominal' />
+      <column datatype='string'  name='[InternetService]'  role='dimension' type='nominal' />
+      <column datatype='real'    name='[MonthlyCharges]'   role='measure'   type='quantitative' />
+      <column datatype='real'    name='[TotalCharges]'     role='measure'   type='quantitative' />
+      <column datatype='string'  name='[Churn]'            role='dimension' type='nominal' />
+
+      <!-- calculated field: Churn Rate -->
+      <column caption='Churn Rate' datatype='real' name='[ChurnRate]' role='measure' type='quantitative'>
+        <calculation class='tableau' formula='SUM(IF [Churn] = "Yes" THEN 1 ELSE 0 END) / COUNT([customerID])' />
+      </column>
+
+      <!-- calculated field: Tenure Bucket -->
+      <column caption='Tenure Bucket' datatype='string' name='[TenureBucket]' role='dimension' type='nominal'>
+        <calculation class='tableau' formula='IF [tenure] &lt;= 6 THEN "0-6m" ELSEIF [tenure] &lt;= 12 THEN "6-12m" ELSEIF [tenure] &lt;= 24 THEN "1-2y" ELSEIF [tenure] &lt;= 48 THEN "2-4y" ELSEIF [tenure] &lt;= 72 THEN "4-6y" ELSE "6y+" END' />
+      </column>
+
+      <!-- annual revenue at risk -->
+      <column caption='Annual Revenue at Risk' datatype='real' name='[AnnualRevAtRisk]' role='measure' type='quantitative'>
+        <calculation class='tableau' formula='SUM(IF [Churn] = "Yes" THEN [MonthlyCharges] * 12 END)' />
+      </column>
+    </datasource>
+
+    <datasource caption='Revenue Impact by Tier' inline='true' name='revenue_impact' version='18.1'>
+      <connection class='textscan' directory='../data/processed' filename='revenue_impact_by_tier.csv'>
+        <relation connection='textscan' name='revenue_impact_by_tier.csv' table='[revenue_impact_by_tier#csv]' type='table' />
+      </connection>
+      <column datatype='string'  name='[tier]'              role='dimension' type='nominal' />
+      <column datatype='integer' name='[customers]'         role='measure'   type='quantitative' />
+      <column datatype='real'    name='[avg_prob]'          role='measure'   type='quantitative' />
+      <column datatype='real'    name='[revenue_at_risk]'   role='measure'   type='quantitative' />
+      <column datatype='real'    name='[revenue_protected]' role='measure'   type='quantitative' />
+      <column datatype='real'    name='[net_value]'         role='measure'   type='quantitative' />
+    </datasource>
+
+    <datasource caption='Feature Importance' inline='true' name='feature_importance' version='18.1'>
+      <connection class='textscan' directory='../data/processed' filename='feature_importance.csv'>
+        <relation connection='textscan' name='feature_importance.csv' table='[feature_importance#csv]' type='table' />
+      </connection>
+      <column datatype='string' name='[feature]'    role='dimension' type='nominal' />
+      <column datatype='real'   name='[importance]' role='measure'   type='quantitative' />
+    </datasource>
+
+    <datasource caption='Threshold Sweep' inline='true' name='threshold_sweep' version='18.1'>
+      <connection class='textscan' directory='../data/processed/evaluation' filename='threshold_sweep.csv'>
+        <relation connection='textscan' name='threshold_sweep.csv' table='[threshold_sweep#csv]' type='table' />
+      </connection>
+      <column datatype='real'    name='[threshold]'          role='dimension' type='ordinal' />
+      <column datatype='integer' name='[predicted_positive]' role='measure'   type='quantitative' />
+      <column datatype='real'    name='[precision]'          role='measure'   type='quantitative' />
+      <column datatype='real'    name='[recall]'             role='measure'   type='quantitative' />
+      <column datatype='real'    name='[f1]'                 role='measure'   type='quantitative' />
+    </datasource>
+  </datasources>
+
+  <worksheets>
+    <worksheet name='Churn by Contract'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Telco Customers' name='telco' />
+          </datasources>
+          <datasource-dependencies datasource='telco'>
+            <column datatype='string' name='[Contract]' role='dimension' type='nominal' />
+            <column datatype='real'   name='[ChurnRate]' role='measure' type='quantitative' />
+          </datasource-dependencies>
+        </view>
+        <rows>[telco].[ChurnRate]</rows>
+        <cols>[telco].[Contract]</cols>
+        <style>
+          <style-rule element='mark'>
+            <format attr='mark-type' value='bar' />
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <worksheet name='Churn by Tenure'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Telco Customers' name='telco' />
+          </datasources>
+          <datasource-dependencies datasource='telco'>
+            <column datatype='string' name='[TenureBucket]' role='dimension' type='nominal' />
+            <column datatype='real'   name='[ChurnRate]'    role='measure'   type='quantitative' />
+          </datasource-dependencies>
+        </view>
+        <rows>[telco].[ChurnRate]</rows>
+        <cols>[telco].[TenureBucket]</cols>
+        <style>
+          <style-rule element='mark'>
+            <format attr='mark-type' value='bar' />
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <worksheet name='Revenue by Tier'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Revenue Impact by Tier' name='revenue_impact' />
+          </datasources>
+          <datasource-dependencies datasource='revenue_impact'>
+            <column datatype='string' name='[tier]'              role='dimension' type='nominal' />
+            <column datatype='real'   name='[revenue_protected]' role='measure'   type='quantitative' />
+            <column datatype='real'   name='[revenue_at_risk]'   role='measure'   type='quantitative' />
+          </datasource-dependencies>
+        </view>
+        <rows>[revenue_impact].[tier]</rows>
+        <cols>[revenue_impact].[sum:revenue_protected:qk]</cols>
+        <encodings>
+          <color column='[revenue_impact].[tier]' />
+        </encodings>
+        <style>
+          <style-rule element='mark'>
+            <format attr='mark-type' value='bar' />
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <worksheet name='Top Features'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Feature Importance' name='feature_importance' />
+          </datasources>
+          <datasource-dependencies datasource='feature_importance'>
+            <column datatype='string' name='[feature]'    role='dimension' type='nominal' />
+            <column datatype='real'   name='[importance]' role='measure'   type='quantitative' />
+          </datasource-dependencies>
+        </view>
+        <rows>[feature_importance].[feature]</rows>
+        <cols>[feature_importance].[sum:importance:qk]</cols>
+        <style>
+          <style-rule element='mark'>
+            <format attr='mark-type' value='bar' />
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+
+    <worksheet name='Threshold Sweep'>
+      <table>
+        <view>
+          <datasources>
+            <datasource caption='Threshold Sweep' name='threshold_sweep' />
+          </datasources>
+          <datasource-dependencies datasource='threshold_sweep'>
+            <column datatype='real' name='[threshold]' role='dimension' type='ordinal' />
+            <column datatype='real' name='[precision]' role='measure'   type='quantitative' />
+            <column datatype='real' name='[recall]'    role='measure'   type='quantitative' />
+            <column datatype='real' name='[f1]'        role='measure'   type='quantitative' />
+          </datasource-dependencies>
+        </view>
+        <rows>[threshold_sweep].[threshold]</rows>
+        <cols>[Multiple Values]</cols>
+        <encodings>
+          <text column='[threshold_sweep].[sum:precision:qk]' />
+          <text column='[threshold_sweep].[sum:recall:qk]' />
+          <text column='[threshold_sweep].[sum:f1:qk]' />
+        </encodings>
+        <style>
+          <style-rule element='mark'>
+            <format attr='mark-type' value='text' />
+          </style-rule>
+        </style>
+      </table>
+    </worksheet>
+  </worksheets>
+
+  <dashboards>
+    <dashboard name='Customer Churn Dashboard'>
+      <style />
+      <size maxheight='1000' maxwidth='1400' minheight='1000' minwidth='1400' />
+      <zones>
+        <zone h='100000' id='1' type-v2='layout-basic' w='100000' x='0' y='0'>
+          <zone h='8000' id='2' param='vert' type-v2='title' w='100000' x='0' y='0'>
+            <formatted-text>
+              <run fontsize='24' bold='true'>Customer Churn — Trend Analysis &amp; Revenue Impact</run>
+            </formatted-text>
+          </zone>
+          <zone h='32000' id='3' name='Churn by Contract' w='50000' x='0'     y='8000' />
+          <zone h='32000' id='4' name='Churn by Tenure'  w='50000' x='50000' y='8000' />
+          <zone h='30000' id='5' name='Revenue by Tier'  w='50000' x='0'     y='40000' />
+          <zone h='30000' id='6' name='Top Features'     w='50000' x='50000' y='40000' />
+          <zone h='30000' id='7' name='Threshold Sweep'  w='100000' x='0'    y='70000' />
+        </zone>
+      </zones>
+    </dashboard>
+  </dashboards>
+
+  <windows source-height='30'>
+    <window class='dashboard' maximized='true' name='Customer Churn Dashboard' />
+  </windows>
+</workbook>
